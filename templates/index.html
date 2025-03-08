@@ -3,124 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QA-BOT - Voice Analysis</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link href="./Static/CSS/src/output.css" rel="stylesheet">
+    <title>Voice Agent QA Dashboard</title>
+    <!-- <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquerycom/jquery-3.6.0.min.js"></script>
+    <link href="./Static/CSS/src/output.css" rel="stylesheet"> -->
+    <link rel="stylesheet" href="./static/CSS/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100">
-
-    <div class="max-w-3xl mx-auto my-10">
-        <div class="bg-white shadow-lg rounded-xl p-6">
-            <h2 class="text-3xl font-bold text-center text-indigo-600">QA-BOT - Voice Analysis</h2>
-            <p class="text-center text-gray-600 mt-2">Analyze customer interactions with AI</p>
-
-            <!-- Upload Section -->
-            <div class="mt-6">
-                <label class="block text-lg font-medium text-gray-700">Upload an Audio File</label>
-                <input type="file" id="audioFile" class="mt-2 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400" accept="audio/*">
-                <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 mt-4 rounded-lg transition duration-200" onclick="uploadAudio()">
-                    Analyze
-                </button>
-            </div>
-
-            <!-- Processing Status -->
-            <div id="processing" class="text-center text-yellow-500 mt-4 hidden">
-                <strong>Processing audio... Please wait.</strong>
-            </div>
-
-            <!-- Results Section -->
-            <div id="results" class="hidden mt-6 p-4 bg-gray-50 rounded-lg shadow-inner">
-                <h3 class="text-xl font-semibold text-green-600">Analysis Results</h3>
-                <div class="mt-3 text-gray-700">
-                    <p><strong>Transcription:</strong> <span id="transcription"></span></p>
-                    <p><strong>Sentiment:</strong> <span id="sentiment"></span></p>
-                    <p><strong>Response Time:</strong> <span id="response_time"></span> sec</p>
-                    <p><strong>Accuracy:</strong> <span id="accuracy"></span>%</p>
-                    <p><strong>Critical Alerts:</strong> <span id="alerts" class="text-red-500"></span></p>
-                </div>
-
-                <!-- 🎵 Audio Player -->
-                <div class="mt-4">
-                    <h4 class="text-lg font-medium text-gray-700">Uploaded Audio:</h4>
-                    <audio id="audioPlayer" controls class="w-full mt-2">
-                        <source id="audioSource" src="" type="audio/mp3">
-                        Your browser does not support the audio element.
-                    </audio>
-                </div>
-
-                <!--Download pdf-->
-                <div class="mt-4">
-                    <button id="downloadPdf" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition duration-200 hidden">
-                        📄 Download PDF Report
-                    </button>
-                </div>
-            </div>
-
+<body>
+    <header>
+        <div class="container">
+            <h1>Voice Agent QA Dashboard</h1>
+            <p>Real-time performance analysis and insights</p>
         </div>
+    </header>
+
+    <div class="container">
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <h2>Upload Call Recording</h2>
+            <div class="upload-container">
+                <input type="file" id="audioFile" accept="audio/*">
+                <button id="analyzeBtn">Analyze Call</button>
+            </div>
+            <div id="processing" class="processing-status">Processing audio... Please wait.</div>
+        </section>
+
+        <!-- Summary Section -->
+        <section class="summary-section" id="summarySection">
+            <h2>Performance Summary</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Overall Score</h3>
+                    <div class="score" id="overallScore">85%</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Sentiment</h3>
+                    <div class="score" id="overallSentiment">Positive</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Avg Response Time</h3>
+                    <div class="score" id="avgResponseTime">2.3s</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Accuracy</h3>
+                    <div class="score" id="accuracyScore">92%</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="charts-section" id="chartsSection">
+            <h2>Performance Analytics</h2>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Sentiment Progression</h3>
+                    <canvas id="sentimentChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Sentiment Distribution</h3>
+                    <canvas id="sentimentPieChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Response Times</h3>
+                    <canvas id="responseTimeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Key Metrics</h3>
+                    <canvas id="metricsRadarChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Negative Statements Section -->
+        <section class="negative-section" id="negativeSection">
+            <h2>Critical Issues Detected</h2>
+            <div class="negative-container">
+                <div class="alert-box">
+                    <h3>Negative Statements</h3>
+                    <ul id="negativeStatements">
+                        <!-- Will be populated by JavaScript -->
+                    </ul>
+                </div>
+                <div class="alert-box">
+                    <h3>Long Pauses</h3>
+                    <ul id="longPauses">
+                        <!-- Will be populated by JavaScript -->
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transcript Section -->
+        <section class="transcript-section" id="transcriptSection">
+            <h2>Call Transcript</h2>
+            <div class="transcript-container">
+                <div class="transcript-controls">
+                    <button id="showAllBtn" class="active">All</button>
+                    <button id="showAgentBtn">Agent</button>
+                    <button id="showCustomerBtn">Customer</button>
+                    <button id="showNegativeBtn">Negative Only</button>
+                </div>
+                <div class="transcript" id="transcript">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
     </div>
 
-    <script>
-        function uploadAudio() {
-            let file = document.getElementById("audioFile").files[0];
-            if (!file) {
-                alert("Please select an audio file!");
-                return;
-            }
+    <footer>
+        <div class="container">
+            <p>Voice Agent QA Dashboard | Powered by AI Analytics</p>
+        </div>
+    </footer>
 
-            let formData = new FormData();
-            formData.append("audio", file);
-
-            $("#processing").removeClass("hidden");
-            $("#results").addClass("hidden");
-
-            fetch("/upload", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                $("#processing").addClass("hidden");
-                $("#results").removeClass("hidden");
-                $("#downloadPdf").removeClass("hidden");
-                $("#transcription").text(data.transcription);
-                $("#sentiment").text(data.sentiment);
-                $("#response_time").text(data.response_time);
-                $("#accuracy").text(data.accuracy);
-                $("#alerts").text(data.alerts || "None");
-
-                // 🎵 Set Cloudinary audio URL
-                $("#audioSource").attr("src", data.audio_url);
-                $("#audioPlayer")[0].load(); // Reload the audio player to play the new file
-
-
-                // 📄 Handle PDF Download
-                $("#downloadPdf").off("click").on("click", function() {
-                    fetch("/generate_pdf", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(data),
-                    })
-                    .then(response => response.blob())
-                    .then(blob => {
-                        let link = document.createElement("a");
-                        link.href = window.URL.createObjectURL(blob);
-                        link.download = "audio_report.pdf";
-                        link.click();
-                    })
-                    .catch(error => {
-                        console.error("Error generating PDF:", error);
-                        alert("Failed to download PDF!");
-                    });
-                });
-
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                alert("Failed to process the audio!");
-            });
-        }
-    </script>
-
+    <script src="./static/JS/script.js"></script>
 </body>
-</html>
