@@ -30,6 +30,29 @@ cloudinary.config(
 
 sentiment = {}
 
+def generate_data():
+    generated_data = []
+    sentiment_data = [
+    {"sentence": "One", "sentiment": "Neutral"},
+    {"sentence": "Can we go for a swim in the sea? Two", "sentiment": "Neutral"},
+    {"sentence": "It's a beautiful day in the south of England", "sentiment": "Positive"},
+    {"sentence": "Three", "sentiment": "Neutral"}
+]
+    for entry in sentiment_data:
+        alert = "None"  # Default value
+        if entry["sentiment"] not in ["Positive", "Neutral"]:
+            alert = "Set (Red Flag)"  # If sentiment is not Positive or Neutral, set alert to "Red Flag"
+        
+        generated_data.append({
+            "transcription": entry["sentence"],  # Sentence as transcription
+            "sentiment": entry["sentiment"],      # Sentiment
+            "response_time": entry["resp_time"],  # Response time
+            "alerts": alert                 # Alert based on sentiment
+        })
+    
+    # Return the generated data as a JSON response
+    return (generated_data)
+
 def calculate_sentiment_percentage(sentiment_data):
     # Initialize counters for each sentiment
     sentiment_counts = {"Positive": 0, "Negative": 0, "Neutral": 0}
@@ -55,6 +78,9 @@ sentiment_data = [
     {"sentence": "Three", "sentiment": "Neutral"}
 ]
 
+
+
+
 # Calculate the sentiment percentages
 percentages = calculate_sentiment_percentage(sentiment_data)
 
@@ -78,18 +104,20 @@ def upload():
     if "audio" not in request.files:
         return jsonify({"error": "No audio file provided"}), 400
 
-    transcription = """From tropical Asia, mangoes were introduced to East Africa by Arab and Persian traders in the ninth to tenth centuries.[20] The 14th-century Moroccan traveler Ibn Battuta reported it at Mogadishu.[21] It was spread further into other areas around the world during the Colonial Era. The Portuguese Empire spread the mango from their colony in Goa to East and West Africa. From West Africa, they introduced it to Brazil from the 16th to the 17th centuries. From Brazil, it spread northwards to the Caribbean and eastern Mexico by the mid to late 18th century. The Spanish Empire also introduced mangoes directly from the Philippines to western Mexico via the Manila galleons from at least the 16th century. Mangoes were only introduced to Florida by 1833"""
-    response_time = 20
-    accuracy = round(random.uniform(85, 99), 2)
-    alerts = "None"
-    audio_file = request.files["audio"]
+    # transcription = """From tropical Asia, mangoes were introduced to East Africa by Arab and Persian traders in the ninth to tenth centuries.[20] The 14th-century Moroccan traveler Ibn Battuta reported it at Mogadishu.[21] It was spread further into other areas around the world during the Colonial Era. The Portuguese Empire spread the mango from their colony in Goa to East and West Africa. From West Africa, they introduced it to Brazil from the 16th to the 17th centuries. From Brazil, it spread northwards to the Caribbean and eastern Mexico by the mid to late 18th century. The Spanish Empire also introduced mangoes directly from the Philippines to western Mexico via the Manila galleons from at least the 16th century. Mangoes were only introduced to Florida by 1833"""
+    # response_time = 20
+    # accuracy = round(random.uniform(85, 99), 2)
+    # alerts = "None"
+    audio_file = request.files["audio"] 
 
     # Sentiment data as a dictionary
-    sentiment = {
-        "Positive": 25,
-        "Negative": 25,
-        "Neutral": 50
-    }
+    # sentiment = {
+    #     "Positive": 25,
+    #     "Negative": 25,
+    #     "Neutral": 50
+    # }
+    
+    sentiment=calculate_sentiment_percentage(sentiment_data)
 
     # Generate pie chart
     chart_path = generate_pie_chart(sentiment)
@@ -97,16 +125,11 @@ def upload():
     # Upload audio file to Cloudinary
     upload_result = cloudinary.uploader.upload(audio_file, resource_type="auto")
     audio_url = upload_result["secure_url"]
+    
+    data=generate_data();
 
-    return jsonify({
-        "transcription": transcription,
-        "sentiment": sentiment,
-        "response_time": response_time,
-        "accuracy": accuracy,
-        "alerts": alerts,
-        "audio_url": audio_url,
-        "chart_path": chart_path
-    })
+    
+    return jsonify(data)
     
 
 
