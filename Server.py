@@ -5,8 +5,6 @@ import cloudinary.uploader
 import matplotlib
 matplotlib.use("Agg")  # Fix Matplotlib GUI warning
 import matplotlib.pyplot as plt
-import plotly.express as px
-import pandas as pd
 import io
 import base64
 from models.user_model import User
