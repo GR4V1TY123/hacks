@@ -55,13 +55,17 @@
                     <img id="sentimentChartImg" class="hidden mx-auto mt-2 rounded-lg shadow-lg" alt="Sentiment Analysis Chart" style="max-width: 400px;">
                 </div>
 
-                <!-- Download PDF Button -->
+                <!--Download pdf-->
                 <div class="mt-4">
                     <button id="downloadPdf" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition duration-200 hidden">
                         📄 Download PDF Report
                     </button>
                 </div>
+
+                
+
             </div>
+
         </div>
     </div>
 
@@ -76,76 +80,56 @@
             let formData = new FormData();
             formData.append("audio", file);
 
-            // Show processing message
             $("#processing").removeClass("hidden");
             $("#results").addClass("hidden");
-            $("#downloadPdf").addClass("hidden");
 
             fetch("/upload", {
                 method: "POST",
                 body: formData
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Failed to upload and process the audio.");
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                // Hide processing message and show results
                 $("#processing").addClass("hidden");
                 $("#results").removeClass("hidden");
-
-                // Display results
+                $("#downloadPdf").removeClass("hidden");
                 $("#transcription").text(data.transcription);
+                $("#sentiment").text(data.sentiment);
                 $("#response_time").text(data.response_time);
                 $("#accuracy").text(data.accuracy);
                 $("#alerts").text(data.alerts || "None");
 
-                // Format sentiment for display
-                const sentimentText = Object.entries(data.sentiment)
-                    .map(([key, value]) => `${key}: ${value}%`)
-                    .join(", ");
-                $("#sentiment").text(sentimentText);
-
-                // Set Cloudinary audio URL
+                // 🎵 Set Cloudinary audio URL
                 $("#audioSource").attr("src", data.audio_url);
-                $("#audioPlayer")[0].load(); // Reload the audio player
+                $("#audioPlayer")[0].load(); // Reload the audio player to play the new file
 
-                // Display sentiment chart
+                // 🖼️ Display Sentiment Pie Chart Image
                 if (data.chart_path) {
                     $("#sentimentChartImg").attr("src", data.chart_path).removeClass("hidden");
                 }
-
-                // Enable PDF download button
-                $("#downloadPdf").removeClass("hidden").off("click").on("click", function() {
+                // 📄 Handle PDF Download
+                $("#downloadPdf").off("click").on("click", function() {
                     fetch("/generate_pdf", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(data),
                     })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error("Failed to generate PDF.");
-                        }
-                        return response.blob();
-                    })
+                    .then(response => response.blob())
                     .then(blob => {
-                        const link = document.createElement("a");
+                        let link = document.createElement("a");
                         link.href = window.URL.createObjectURL(blob);
                         link.download = "audio_report.pdf";
                         link.click();
                     })
                     .catch(error => {
                         console.error("Error generating PDF:", error);
-                        alert("Failed to download PDF. Please try again.");
+                        alert("Failed to download PDF!");
                     });
                 });
+
             })
             .catch(error => {
                 console.error("Error:", error);
-                alert("Failed to process the audio. Please try again.");
-                $("#processing").addClass("hidden");
+                alert("Failed to process the audio!");
             });
         }
     </script>

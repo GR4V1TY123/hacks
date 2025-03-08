@@ -22,7 +22,7 @@ def printer():
         time.sleep(5)  # Wait before checking again
 
 # Configure Gemini API
-genai.configure(api_key="AIzaSyB7qI58etCXatUK7BSGK49j8AQMM9tTSqU")
+genai.configure(api_key="AIzaSyC3vNkSnEJl-eFloSm9M4Bw0F_cJv2vusY")
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
 # Load Whisper model
