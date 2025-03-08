@@ -5,17 +5,13 @@ import cloudinary.uploader
 import matplotlib
 matplotlib.use("Agg")  # Fix Matplotlib GUI warning
 import matplotlib.pyplot as plt
-import plotly.express as px
-import pandas as pd
 import io
-import base64
 from models.user_model import User
 import random
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from flask import send_file
 from reportlab.lib.utils import ImageReader
-
 app = Flask(__name__)
 
 # Connect MongoDB
@@ -32,12 +28,40 @@ cloudinary.config(
 # def index():
 #     return render_template("index.html")
 
+sentiment = {}
+
+def calculate_sentiment_percentage(sentiment_data):
+    # Initialize counters for each sentiment
+    sentiment_counts = {"Positive": 0, "Negative": 0, "Neutral": 0}
+    
+    # Count the occurrences of each sentiment
+    total_sentences = len(sentiment_data)
+    for entry in sentiment_data:
+        sentiment = entry['sentiment']
+        if sentiment in sentiment_counts:
+            sentiment_counts[sentiment] += 1
+    
+    # Calculate percentages
+    sentiment_percentages = {sentiment: (count / total_sentences) * 100 for sentiment, count in sentiment_counts.items()}
+    
+    return sentiment_percentages
 
 
-def generate_pie_chart(sentiment):
+# Example input
+sentiment_data = [
+    {"sentence": "One", "sentiment": "Neutral"},
+    {"sentence": "Can we go for a swim in the sea? Two", "sentiment": "Neutral"},
+    {"sentence": "It's a beautiful day in the south of England", "sentiment": "Positive"},
+    {"sentence": "Three", "sentiment": "Neutral"}
+]
+
+# Calculate the sentiment percentages
+percentages = calculate_sentiment_percentage(sentiment_data)
+
+def generate_pie_chart(sentiment_dict):
     """Generates a pie chart for sentiment analysis and saves it."""
-    labels = sentiment.keys()
-    sizes = sentiment.values()
+    labels = sentiment_dict.keys()
+    sizes = sentiment_dict.values()
     colors = ["green", "red", "gray"]
 
     plt.figure(figsize=(6, 6))
@@ -53,27 +77,36 @@ def generate_pie_chart(sentiment):
 def upload():
     if "audio" not in request.files:
         return jsonify({"error": "No audio file provided"}), 400
-    
-    # Simulated Analysis Data (Replace with real ML analysis)
-    transcription = "Hello, this is a test transcription. It was previously believed that mangoes originated from a single domestication event in South Asia before being spread to Southeast Asia, but a 2019 study found no evidence of a center of diversity in India. Instead, it identified a higher unique genetic diversity in Southeast Asian cultivars than in Indian cultivars, indicating that mangoes may have originally been domesticated first in Southeast Asia before being introduced to South Asia. However, the authors also cautioned that the diversity in Southeast Asian mangoes might be the result of other reasons (like interspecific hybridization with other Mangifera species native to the Malesian ecoregion). Nevertheless, the existence of two distinct genetic populations also identified by the study indicates that the domestication of the mango is more complex than previously assumed and would at least indicate multiple domestication events in Southeast Asia and South Asia.[1][2]"
+
+    transcription = """From tropical Asia, mangoes were introduced to East Africa by Arab and Persian traders in the ninth to tenth centuries.[20] The 14th-century Moroccan traveler Ibn Battuta reported it at Mogadishu.[21] It was spread further into other areas around the world during the Colonial Era. The Portuguese Empire spread the mango from their colony in Goa to East and West Africa. From West Africa, they introduced it to Brazil from the 16th to the 17th centuries. From Brazil, it spread northwards to the Caribbean and eastern Mexico by the mid to late 18th century. The Spanish Empire also introduced mangoes directly from the Philippines to western Mexico via the Manila galleons from at least the 16th century. Mangoes were only introduced to Florida by 1833"""
     response_time = 20
     accuracy = round(random.uniform(85, 99), 2)
     alerts = "None"
     audio_file = request.files["audio"]
-    sentiment = {"Positive": 50, "Negative": 30, "Neutral": 20}
+
+    # Sentiment data as a dictionary
+    sentiment = {
+        "Positive": 25,
+        "Negative": 25,
+        "Neutral": 50
+    }
+
+    # Generate pie chart
     chart_path = generate_pie_chart(sentiment)
+
+    # Upload audio file to Cloudinary
     upload_result = cloudinary.uploader.upload(audio_file, resource_type="auto")
     audio_url = upload_result["secure_url"]
 
     return jsonify({
-    "transcription": transcription,
-    "sentiment": sentiment,
-    "response_time": response_time,
-    "accuracy": accuracy,
-    "alerts": alerts,
-    "audio_url": audio_url,  # Include uploaded audio URL
-    "chart_path": chart_path
-})
+        "transcription": transcription,
+        "sentiment": sentiment,
+        "response_time": response_time,
+        "accuracy": accuracy,
+        "alerts": alerts,
+        "audio_url": audio_url,
+        "chart_path": chart_path
+    })
     
 
 
@@ -151,7 +184,7 @@ def generate_pdf():
     y_position -= 40  # Extra space before chart
 
     # 📊 Add sentiment analysis chart dynamically below text
-    sentiment_data = {"Positive": 50, "Negative": 30, "Neutral": 20}  # Example data
+    sentiment_data = data["sentiment"]  # Example data
     chart_buffer = generate_pie_chart(sentiment_data)
     chart_reader = ImageReader(chart_buffer)
 
