@@ -1,8 +1,10 @@
 import whisper
 import google.generativeai as genai
+import json
+
 # Load the model (smallest one for speed)
 model = whisper.load_model("tiny")
-question = model.transcribe("audiotest.mp3") 
+question = model.transcribe("bigaudio.mp3")["text"]
 genai.configure(api_key="AIzaSyC3vNkSnEJl-eFloSm9M4Bw0F_cJv2vusY")
 model = genai.GenerativeModel("gemini-1.5-flash")
 
@@ -29,6 +31,8 @@ def printer():
         get_user_input(sentence)  # Get sentiment
         final_list.append((sentence,response_text))
         print(f"Sentence: {sentence}\nSentiment: {response_text}\n")  # Print result
+    json_data=json.dumps(final_list)
+    print(json_data)
         
 if __name__ == '__main__':
     printer()

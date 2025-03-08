@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify
-from mongoengine import connect
-from models.user_model import User
+# from mongoengine import connect
+# from models.user_model import User
 
 app = Flask(__name__)
 
@@ -49,11 +49,11 @@ app = Flask(__name__)
 #     return jsonify({"message": "User added successfully!", "user": {"name": new_user.name, "phone": new_user.phone}})
 
 # Route to Get All Users
-@app.route("/users", methods=["GET"])
-def get_users():
-    users = User.objects()
-    users_list = [{"name": user.name, "phone": user.phone} for user in users]
-    return jsonify({"users": users_list})
+# @app.route("/users", methods=["GET"])
+# def get_users():
+#     users = User.objects()
+#     users_list = [{"name": user.name, "phone": user.phone} for user in users]
+#     return jsonify({"users": users_list})
 
 @app.route('/')
 def home():
