@@ -39,7 +39,24 @@
                     <p><strong>Accuracy:</strong> <span id="accuracy"></span>%</p>
                     <p><strong>Critical Alerts:</strong> <span id="alerts" class="text-red-500"></span></p>
                 </div>
+
+                <!-- 🎵 Audio Player -->
+                <div class="mt-4">
+                    <h4 class="text-lg font-medium text-gray-700">Uploaded Audio:</h4>
+                    <audio id="audioPlayer" controls class="w-full mt-2">
+                        <source id="audioSource" src="" type="audio/mp3">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+
+                <!--Download pdf-->
+                <div class="mt-4">
+                    <button id="downloadPdf" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition duration-200 hidden">
+                        📄 Download PDF Report
+                    </button>
+                </div>
             </div>
+
         </div>
     </div>
 
@@ -65,12 +82,38 @@
             .then(data => {
                 $("#processing").addClass("hidden");
                 $("#results").removeClass("hidden");
-
+                $("#downloadPdf").removeClass("hidden");
                 $("#transcription").text(data.transcription);
                 $("#sentiment").text(data.sentiment);
                 $("#response_time").text(data.response_time);
                 $("#accuracy").text(data.accuracy);
                 $("#alerts").text(data.alerts || "None");
+
+                // 🎵 Set Cloudinary audio URL
+                $("#audioSource").attr("src", data.audio_url);
+                $("#audioPlayer")[0].load(); // Reload the audio player to play the new file
+
+
+                // 📄 Handle PDF Download
+                $("#downloadPdf").off("click").on("click", function() {
+                    fetch("/generate_pdf", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(data),
+                    })
+                    .then(response => response.blob())
+                    .then(blob => {
+                        let link = document.createElement("a");
+                        link.href = window.URL.createObjectURL(blob);
+                        link.download = "audio_report.pdf";
+                        link.click();
+                    })
+                    .catch(error => {
+                        console.error("Error generating PDF:", error);
+                        alert("Failed to download PDF!");
+                    });
+                });
+
             })
             .catch(error => {
                 console.error("Error:", error);
