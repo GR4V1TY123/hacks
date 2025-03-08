@@ -16,7 +16,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show processing status
         document.getElementById('processing').style.display = 'block';
         
+<<<<<<< HEAD
+        // Simulate processing delay (in a real app, this would be an actual API call)AA
+=======
         // Simulate processing delay (in a real app, this would be an actual API call)
+>>>>>>> 76002d947c012066cb8a269cc5661d9f0b46dff2
         setTimeout(function() {
             // Hide processing status
             document.getElementById('processing').style.display = 'none';

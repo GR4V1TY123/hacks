@@ -8,36 +8,44 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="./Static/CSS/src/output.css" rel="stylesheet">
 </head>
-<body class="bg-gray-100">
+<body>
+    <header>
+        <div class="container">
+            <h1>Voice Agent QA Dashboard</h1>
+            <p>Real-time performance analysis and insights</p>
+        </div>
+    </header>
 
-    <div class="max-w-3xl mx-auto my-10">
-        <div class="bg-white shadow-lg rounded-xl p-6">
-            <h2 class="text-3xl font-bold text-center text-indigo-600">QA-BOT - Voice Analysis</h2>
-            <p class="text-center text-gray-600 mt-2">Analyze customer interactions with AI</p>
-
-            <!-- Upload Section -->
-            <div class="mt-6">
-                <label class="block text-lg font-medium text-gray-700">Upload an Audio File</label>
-                <input type="file" id="audioFile" class="mt-2 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-400" accept="audio/*">
-                <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 mt-4 rounded-lg transition duration-200" onclick="uploadAudio()">
-                    Analyze
-                </button>
+    <div class="container">
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <h2>Upload Call Recording</h2>
+            <div class="upload-container">
+                <input type="file" id="audioFile" accept="audio/*">
+                <button id="analyzeBtn">Analyze Call</button>
             </div>
+            <div id="processing" class="processing-status">Processing audio... Please wait.</div>
+        </section>
 
-            <!-- Processing Status -->
-            <div id="processing" class="text-center text-yellow-500 mt-4 hidden">
-                <strong>Processing audio... Please wait.</strong>
-            </div>
-
-            <!-- Results Section -->
-            <div id="results" class="hidden mt-6 p-4 bg-gray-50 rounded-lg shadow-inner">
-                <h3 class="text-xl font-semibold text-green-600">Analysis Results</h3>
-                <div class="mt-3 text-gray-700">
-                    <p><strong>Transcription:</strong> <span id="transcription"></span></p>
-                    <p><strong>Sentiment:</strong> <span id="sentiment"></span></p>
-                    <p><strong>Response Time:</strong> <span id="response_time"></span> sec</p>
-                    <p><strong>Accuracy:</strong> <span id="accuracy"></span>%</p>
-                    <p><strong>Critical Alerts:</strong> <span id="alerts" class="text-red-500"></span></p>
+        <!-- Summary Section -->
+        <section class="summary-section" id="summarySection">
+            <h2>Performance Summary</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Overall Score</h3>
+                    <div class="score" id="overallScore">85%</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Sentiment</h3>
+                    <div class="score" id="overallSentiment">Positive</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Avg Response Time</h3>
+                    <div class="score" id="avgResponseTime">2.3s</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Accuracy</h3>
+                    <div class="score" id="accuracyScore">92%</div>
                 </div>
 
                 <!-- 🎵 Audio Player -->
@@ -150,5 +158,6 @@
         }
     </script>
 
+    <script src="./Static/CSS/JS/script.js"></script>
 </body>
 </html>

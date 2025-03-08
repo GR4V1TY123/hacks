@@ -131,7 +131,7 @@ def add_user():
 @app.route("/users", methods=["GET"])
 def get_users():
     users = User.objects()
-    users_list = [{"name": user.name, "phone": user.phone, "audio_url": user.audio_url} for user in users]
+    users_list = [{"name": user.name, "phone": user.phone} for user in users]
     return jsonify({"users": users_list})
 
 # 📝 Route to generate a PDF report
