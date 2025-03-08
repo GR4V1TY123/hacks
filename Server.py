@@ -5,13 +5,17 @@ import cloudinary.uploader
 import matplotlib
 matplotlib.use("Agg")  # Fix Matplotlib GUI warning
 import matplotlib.pyplot as plt
+import plotly.express as px
+import pandas as pd
 import io
+import base64
 from models.user_model import User
 import random
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from flask import send_file
 from reportlab.lib.utils import ImageReader
+
 app = Flask(__name__)
 
 # Connect MongoDB
@@ -28,7 +32,7 @@ cloudinary.config(
 # def index():
 #     return render_template("index.html")
 
-sentiment = {}
+
 
 def generate_data():
     generated_data = []
@@ -86,8 +90,8 @@ percentages = calculate_sentiment_percentage(sentiment_data)
 
 def generate_pie_chart(sentiment_dict):
     """Generates a pie chart for sentiment analysis and saves it."""
-    labels = sentiment_dict.keys()
-    sizes = sentiment_dict.values()
+    labels = sentiment.keys()
+    sizes = sentiment.values()
     colors = ["green", "red", "gray"]
 
     plt.figure(figsize=(6, 6))
@@ -121,8 +125,6 @@ def upload():
 
     # Generate pie chart
     chart_path = generate_pie_chart(sentiment)
-
-    # Upload audio file to Cloudinary
     upload_result = cloudinary.uploader.upload(audio_file, resource_type="auto")
     audio_url = upload_result["secure_url"]
     
@@ -154,7 +156,7 @@ def add_user():
 @app.route("/users", methods=["GET"])
 def get_users():
     users = User.objects()
-    users_list = [{"name": user.name, "phone": user.phone} for user in users]
+    users_list = [{"name": user.name, "phone": user.phone, "audio_url": user.audio_url} for user in users]
     return jsonify({"users": users_list})
 
 # 📝 Route to generate a PDF report
@@ -207,7 +209,7 @@ def generate_pdf():
     y_position -= 40  # Extra space before chart
 
     # 📊 Add sentiment analysis chart dynamically below text
-    sentiment_data = data["sentiment"]  # Example data
+    sentiment_data = {"Positive": 50, "Negative": 30, "Neutral": 20}  # Example data
     chart_buffer = generate_pie_chart(sentiment_data)
     chart_reader = ImageReader(chart_buffer)
 
