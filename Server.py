@@ -1,18 +1,11 @@
 from flask import Flask, render_template, request, jsonify
-from flask_mongoengine import MongoEngine
+from mongoengine import connect
 from models.user_model import User
 
 app = Flask(__name__)
 
-# Configure MongoDB
-app.config["MONGODB_SETTINGS"] = {
-    "db": "voiceAnalysisDB",
-    "host": "localhost",
-    "port": 27017
-}
-
-# Initialize Database
-db = MongoEngine(app)
+# Connect MongoDB
+connect(db="voiceAnalysisDB", host="localhost", port=27017)
 
 @app.route("/")
 def index():
@@ -37,17 +30,20 @@ def upload():
 
     return jsonify(response_data)
 
-# Route to Add a New User
+
 @app.route("/add_user", methods=["POST"])
 def add_user():
     data = request.json
-    if not data or "name" not in data or "phone" not in data:
-        return jsonify({"error": "Missing name or phone number"}), 400
+    if not data or "phone" not in data:
+        return jsonify({"error": "Missing phone number"}), 400  # Name is no longer required
 
     if User.objects(phone=data["phone"]):
         return jsonify({"error": "Phone number already exists"}), 400
 
-    new_user = User(name=data["name"], phone=data["phone"])
+    new_user = User(
+        name=data.get("name", ""),  # Default to empty string if name is missing
+        phone=data["phone"]
+    )
     new_user.save()
 
     return jsonify({"message": "User added successfully!", "user": {"name": new_user.name, "phone": new_user.phone}})
