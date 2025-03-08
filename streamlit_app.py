@@ -22,8 +22,8 @@ cloudinary.config(
 def generate_data():
     generated_data = []
     sentiment_data = [
-        {"sentence": "One", "sentiment": "Neutral"},
-        {"sentence": "Can we go for a swim in the sea? Two", "sentiment": "Neutral"},
+        {"sentence": "One", "sentiment": "Negative"},
+        {"sentence": "Can we go for a swim in the sea? Two", "sentiment": "Negative"},
         {"sentence": "It's a beautiful day in the south of England", "sentiment": "Positive"},
         {"sentence": "Three", "sentiment": "Neutral"}
     ]
@@ -74,7 +74,7 @@ if audio_file:
     st.audio(audio_file)
     # Upload the audio file to Cloudinary
     audio_file_path = audio_file.name
-    upload_result = cloudinary.uploader.upload(audio_file, resource_type="video",  folder="audios")  # Using resource_type="video" for audio files
+    upload_result = cloudinary.uploader.upload(audio_file, resource_type="video", folder="audios")  # Using resource_type="video" for audio files
 
     # Get the URL of the uploaded audio file
     audio_url = upload_result['secure_url']
@@ -87,6 +87,9 @@ if audio_file:
     # Display Sentiment Percentages
     st.write("Sentiment Analysis Percentages:")
     st.write(sentiment_percentages)
+    
+    # Display Transcriptions
+    st.write("Transcript Analysis:")
     
     # Initialize the transcription HTML
     transcription_html = ""
@@ -104,6 +107,9 @@ if audio_file:
         transcription_html += f"""
         <div class="transcription" style="border-color: {border_color};">
             <strong>Transcription:</strong> {entry['transcription']}
+            <br><strong>Sentiment:</strong> {entry['sentiment']}
+            <br><strong>Alerts:</strong> {entry['alerts']}
+            <br><strong>Response Time:</strong> {entry['response_time']} seconds
         </div>
         """
 
@@ -127,8 +133,6 @@ if audio_file:
         """,
         unsafe_allow_html=True
     )
-
-
 
     # Generate and Display Pie Chart
     chart_path = generate_pie_chart(sentiment_percentages)
@@ -193,7 +197,7 @@ if audio_file:
 
         # Add Sentiment Chart to PDF
         chart_reader = ImageReader(chart_path)
-        pdf.drawImage(chart_reader, 100, y_position - 400, width=300, height=300)
+        pdf.drawImage(chart_reader, 100, y_position - 200, width=300, height=200)
 
         # Save PDF to buffer
         pdf.showPage()
