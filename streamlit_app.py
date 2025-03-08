@@ -74,7 +74,7 @@ if audio_file:
     st.audio(audio_file)
     # Upload the audio file to Cloudinary
     audio_file_path = audio_file.name
-    upload_result = cloudinary.uploader.upload(audio_file, resource_type="video")  # Using resource_type="video" for audio files
+    upload_result = cloudinary.uploader.upload(audio_file, resource_type="video",  folder="audios")  # Using resource_type="video" for audio files
 
     # Get the URL of the uploaded audio file
     audio_url = upload_result['secure_url']
@@ -88,15 +88,26 @@ if audio_file:
     st.write("Sentiment Analysis Percentages:")
     st.write(sentiment_percentages)
     
-    # Display Transcription with Fancy CSS for each transcription
+    # Initialize the transcription HTML
     transcription_html = ""
+
+    # Loop through sentiment data and generate transcription blocks
     for entry in sentiment_data:
+        # Determine the border color based on sentiment
+        if entry['sentiment'] == "Positive":
+            border_color = "#28a745"  # Green for Positive
+        elif entry['sentiment'] == "Negative":
+            border_color = "#dc3545"  # Red for Negative
+        else:
+            border_color = "#6c757d"  # Gray for Neutral
+
         transcription_html += f"""
-        <div class="transcription">
+        <div class="transcription" style="border-color: {border_color};">
             <strong>Transcription:</strong> {entry['transcription']}
         </div>
         """
-    
+
+    # Add the CSS for transcription styling
     st.markdown(
         f"""
         <style>
@@ -106,9 +117,9 @@ if audio_file:
                 color: #4A90E2;
                 padding: 10px;
                 border-radius: 8px;
-                border: 1px solid #ddd;
+                border: 2px solid;
                 box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
-                margin-top: 10px;,
+                margin-top: 10px;
                 margin-bottom: 10px;
             }}
         </style>
@@ -116,6 +127,7 @@ if audio_file:
         """,
         unsafe_allow_html=True
     )
+
 
 
     # Generate and Display Pie Chart
