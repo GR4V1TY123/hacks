@@ -16,9 +16,9 @@ cloudinary.config(
     api_secret="MByqbQBBH0a3L8-T84MRYTj5BWA"
 )
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+# @app.route("/")
+# def index():
+#     return render_template("index.html")
 
 # Route to Upload and Process Audio
 @app.route("/upload", methods=["POST"])
@@ -43,7 +43,7 @@ def upload():
         "audio_url": audio_url  # Returning the uploaded audio file URL
     }
 
-    return jsonify(response_data)
+#     return jsonify(response_data)
 
 # Route to Add a New User (Now phone is also optional)
 @app.route("/add_user", methods=["POST"])
@@ -59,7 +59,7 @@ def add_user():
     )
     new_user.save()
 
-    return jsonify({"message": "User added successfully!", "user": {"name": new_user.name, "phone": new_user.phone}})
+#     return jsonify({"message": "User added successfully!", "user": {"name": new_user.name, "phone": new_user.phone}})
 
 # Route to Get All Users
 @app.route("/users", methods=["GET"])
@@ -68,5 +68,12 @@ def get_users():
     users_list = [{"name": user.name, "phone": user.phone, "audio_url": user.audio_url} for user in users]
     return jsonify({"users": users_list})
 
-if __name__ == "__main__":
-    app.run(port=3000, debug=True)
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+if __name__=='__main__':
+    app.run(debug=True)
+
+# if __name__ == "__main__":
+#     app.run(port=3000, debug=True)
