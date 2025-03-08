@@ -22,8 +22,8 @@ cloudinary.config(
 def generate_data():
     generated_data = []
     sentiment_data = [
-        {"sentence": "One", "sentiment": "Neutral"},
-        {"sentence": "Can we go for a swim in the sea? Two", "sentiment": "Neutral"},
+        {"sentence": "One", "sentiment": "Negative"},
+        {"sentence": "Can we go for a swim in the sea? Two", "sentiment": "Negative"},
         {"sentence": "It's a beautiful day in the south of England", "sentiment": "Positive"},
         {"sentence": "Three", "sentiment": "Neutral"}
     ]
@@ -74,7 +74,7 @@ if audio_file:
     st.audio(audio_file)
     # Upload the audio file to Cloudinary
     audio_file_path = audio_file.name
-    upload_result = cloudinary.uploader.upload(audio_file, resource_type="video")  # Using resource_type="video" for audio files
+    upload_result = cloudinary.uploader.upload(audio_file, resource_type="video", folder="audios")  # Using resource_type="video" for audio files
 
     # Get the URL of the uploaded audio file
     audio_url = upload_result['secure_url']
@@ -88,15 +88,32 @@ if audio_file:
     st.write("Sentiment Analysis Percentages:")
     st.write(sentiment_percentages)
     
-    # Display Transcription with Fancy CSS for each transcription
+    # Display Transcriptions
+    st.write("Transcript Analysis:")
+    
+    # Initialize the transcription HTML
     transcription_html = ""
+
+    # Loop through sentiment data and generate transcription blocks
     for entry in sentiment_data:
+        # Determine the border color based on sentiment
+        if entry['sentiment'] == "Positive":
+            border_color = "#28a745"  # Green for Positive
+        elif entry['sentiment'] == "Negative":
+            border_color = "#dc3545"  # Red for Negative
+        else:
+            border_color = "#6c757d"  # Gray for Neutral
+
         transcription_html += f"""
-        <div class="transcription">
+        <div class="transcription" style="border-color: {border_color};">
             <strong>Transcription:</strong> {entry['transcription']}
+            <br><strong>Sentiment:</strong> {entry['sentiment']}
+            <br><strong>Alerts:</strong> {entry['alerts']}
+            <br><strong>Response Time:</strong> {entry['response_time']} seconds
         </div>
         """
-    
+
+    # Add the CSS for transcription styling
     st.markdown(
         f"""
         <style>
@@ -106,9 +123,9 @@ if audio_file:
                 color: #4A90E2;
                 padding: 10px;
                 border-radius: 8px;
-                border: 1px solid #ddd;
+                border: 2px solid;
                 box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
-                margin-top: 10px;,
+                margin-top: 10px;
                 margin-bottom: 10px;
             }}
         </style>
@@ -116,7 +133,6 @@ if audio_file:
         """,
         unsafe_allow_html=True
     )
-
 
     # Generate and Display Pie Chart
     chart_path = generate_pie_chart(sentiment_percentages)
@@ -181,7 +197,7 @@ if audio_file:
 
         # Add Sentiment Chart to PDF
         chart_reader = ImageReader(chart_path)
-        pdf.drawImage(chart_reader, 100, y_position - 400, width=300, height=300)
+        pdf.drawImage(chart_reader, 100, y_position - 200, width=300, height=200)
 
         # Save PDF to buffer
         pdf.showPage()
