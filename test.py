@@ -6,6 +6,7 @@ import time
 import threading as th
 import json
 import warnings
+import time 
 warnings.filterwarnings("ignore", message="FP16 is not supported on CPU; using FP32 instead")
 
 
@@ -26,7 +27,7 @@ genai.configure(api_key="AIzaSyC3vNkSnEJl-eFloSm9M4Bw0F_cJv2vusY")
 gemini_model = genai.GenerativeModel("gemini-1.5-flash")
 
 # Load Whisper model
-whisper_model = whisper.load_model("base")
+whisper_model = whisper.load_model("medium")
 
 def split_audio(file_path, chunk_length=5000):
     """Splits audio into 5-second chunks."""
@@ -57,7 +58,8 @@ def get_sentiment(statement):
 
 def main():
     global processing_done
-    input_audio = "bigaudio.mp3"  # Change this to your file
+    current_time=time.time()
+    input_audio = "harvard.mp3"  # Change this to your file
     print("🔹 Splitting audio into chunks...")
     chunk_files = split_audio(input_audio)
 
@@ -69,7 +71,7 @@ def main():
     for chunk_file in chunk_files:
         transcription = transcribe_chunk(chunk_file)
         sentiment = get_sentiment(transcription)
-        results.append((transcription, sentiment))
+        results.append((transcription, sentiment, round(time.time()-current_time,2)))
         os.remove(chunk_file)  # Cleanup chunk file
 
     processing_done = True  # Mark processing as done
