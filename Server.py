@@ -73,7 +73,7 @@ def home():
     return render_template('index.html')
 
 if __name__=='__main__':
-    app.run(debug=True)
+    app.run(port=3000,debug=True)
 
 # if __name__ == "__main__":
 #     app.run(port=3000, debug=True)
