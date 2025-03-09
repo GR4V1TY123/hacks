@@ -8,7 +8,7 @@ import io
 import os
 import librosa
 import numpy as np
-import soundfile as sf
+# import soundfile as sf
 from transformers import pipeline
 from sklearn.cluster import SpectralClustering
 import time
@@ -89,16 +89,16 @@ class VoiceSeparationTranscriber:
             print(f"Clustering error: {e}. Using random labels as fallback.")
             return np.random.randint(0, n_speakers, size=len(features))
     
-    def save_audio_by_speaker(self, segments, labels, sr, output_dir):
-        """Save separated audio files for each speaker."""
-        print("Saving audio by speaker...")
-        speaker_files = {}
-        for i, label in enumerate(np.unique(labels)):
-            speaker_audio = np.concatenate([segments[j] for j in range(len(labels)) if labels[j] == label])
-            speaker_file = os.path.join(output_dir, f"speaker{label+1}_audio.wav")
-            sf.write(speaker_file, speaker_audio, sr)
-            speaker_files[label] = speaker_file
-            print(f"Saved Speaker {label+1} audio to {speaker_file}")
+    # def save_audio_by_speaker(self, segments, labels, sr, output_dir):
+    #     """Save separated audio files for each speaker."""
+    #     print("Saving audio by speaker...")
+    #     speaker_files = {}
+    #     for i, label in enumerate(np.unique(labels)):
+    #         speaker_audio = np.concatenate([segments[j] for j in range(len(labels)) if labels[j] == label])
+    #         speaker_file = os.path.join(output_dir, f"speaker{label+1}_audio.wav")
+    #         sf.write(speaker_file, speaker_audio, sr)
+    #         speaker_files[label] = speaker_file
+    #         print(f"Saved Speaker {label+1} audio to {speaker_file}")
         
         return speaker_files
     
