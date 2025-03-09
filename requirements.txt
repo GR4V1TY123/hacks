@@ -9,3 +9,4 @@ torch==2.0.0
 google-generativeai
 numpy==1.23.5
 pkgconfig
+pycairo==1.23.0
