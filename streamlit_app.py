@@ -16,7 +16,12 @@ from transformers import pipeline
 from sklearn.cluster import SpectralClustering
 import time
 import torch
-torch.classes.__path__ = []
+import google.generativeai as genai
+
+# Configure Gemini API
+genai.configure(api_key='AIzaSyC3vNkSnEJl-eFloSm9M4Bw0F_cJv2vusY')
+gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+
 # Initialize global variable properly
 combined_results = []
 
@@ -28,7 +33,6 @@ cloudinary.config(
     api_key="498768356194988",
     api_secret="MByqbQBBH0a3L8-T84MRYTj5BWA"
 )
-
 
 class VoiceSeparationTranscriber:
     def __init__(self, model_name="openai/whisper-small"):
@@ -106,13 +110,28 @@ class VoiceSeparationTranscriber:
         
         return speaker_files
     
-    def get_sentiment(self, text):
-        """Get sentiment classification for a statement."""
-        if not self.sentiment_model or not text.strip():
-            return "NEUTRAL"  # Default sentiment
+    def get_sentiment_and_emotion(self, text):
+        if not text.strip():
+            return "NEUTRAL", "Neutral"  # Default sentiment and emotion
+        
         try:
-            sentiment = self.sentiment_model(text)
-            return sentiment[0]['label']
+            prompt = f"Analyze the sentiment (Positive, Negative, Neutral) and emotion (e.g., Happy, Sad, Angry) in the following text. Respond in the format 'Sentiment: <sentiment>, Emotion: <emotion>': {text}"
+            response = gemini_model.generate_content(prompt)
+            response_text = response.text.strip()
+            
+            # Parse the response
+            sentiment = response_text.split("Sentiment: ")[1].split(",")[0].strip()
+            emotion = response_text.split("Emotion: ")[1].strip()
+            
+            # Adjust sentiment based on emotion
+            if emotion.lower() in ["happy", "joyful", "excited"]:
+                sentiment = "POSITIVE"
+            elif emotion.lower() in ["sad", "angry", "frustrated"]:
+                sentiment = "NEGATIVE"
+            elif emotion.lower() in ["neutral", "calm", "indifferent"]:
+                sentiment = "NEUTRAL"
+            
+            return sentiment, emotion
         except Exception as e:
             print(f"Error analyzing sentiment: {e}")
             return "NEUTRAL"
@@ -131,7 +150,10 @@ class VoiceSeparationTranscriber:
     def transcribe_segments(self, segments, sr, labels, timestamps):
         """Transcribe each speaker's audio and analyze sentiment and emotion."""
         print("Transcribing audio and analyzing sentiment and emotion...")
+        """Transcribe each speaker's audio and analyze sentiment and emotion."""
+        print("Transcribing audio and analyzing sentiment and emotion...")
         speaker_texts = {}
+        sentiment_data = []  # Store sentiment and emotion data for visualization
         sentiment_data = []  # Store sentiment and emotion data for visualization
 
         for i, label in enumerate(np.unique(labels)):
@@ -158,6 +180,7 @@ class VoiceSeparationTranscriber:
                 speaker_texts[label].append(formatted_text)
                 
                 # Store sentiment and emotion data for visualization
+                # Store sentiment and emotion data for visualization
                 sentiment_data.append({
                     'speaker': label,
                     'timestamp': timestamp,
@@ -169,7 +192,9 @@ class VoiceSeparationTranscriber:
                 # Print to console
                 border_color = "#6c757d"
                 if sentiment == "POSITIVE":
+                if sentiment == "POSITIVE":
                     border_color = "#28a745"
+                elif sentiment == "NEGATIVE":
                 elif sentiment == "NEGATIVE":
                     border_color = "#dc3545"
                         
@@ -185,6 +210,7 @@ class VoiceSeparationTranscriber:
                     color: #4A90E2;
                     box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
                 ">
+                    <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment} | <strong>Emotion:</strong> {emotion}
                     <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment} | <strong>Emotion:</strong> {emotion}
                 </div>
                 """
@@ -244,9 +270,10 @@ class VoiceSeparationTranscriber:
             timestamp = item['timestamp']
             text = item['text']
             sentiment = item['sentiment']
+            emotion = item['emotion']
             
             formatted_text = f"[{timestamp:.2f}s] {text}"
-            result_tuple = (formatted_text, sentiment, timestamp)
+            result_tuple = (formatted_text, sentiment, timestamp, emotion)
             combined_results.append((speaker_name, result_tuple))
 
         # Saving the transcriptions
@@ -359,6 +386,7 @@ def convert_sentiment_data_for_ui(sentiment_data):
         ui_data.append({
             "sentence": entry['text'],
             "sentiment": mapped_sentiment,
+            "emotion": entry['emotion'],
             "response_time": random.randint(10, 30),  # Random response time
             "alerts": alert
         })
@@ -484,6 +512,13 @@ if audio_file:
                 y_position -= 15
 
                 pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(100, y_position, "Emotion:")
+                y_position -= 15
+                pdf.setFont("Helvetica", 12)
+                pdf.drawString(100, y_position, entry['emotion'])
+                y_position -= 15
+
+                pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(100, y_position, "Response Time:")
                 y_position -= 15
                 pdf.setFont("Helvetica", 12)
@@ -497,7 +532,7 @@ if audio_file:
                 pdf.drawString(100, y_position, entry['alerts'])
                 y_position -= 30  # Add extra space between entries
 
-                # Add Sentiment Chart to PDF
+            # Add Sentiment Chart to PDF
             chart_path = generate_pie_chart(sentiment_percentages)
             chart_reader = ImageReader(chart_path)
             pdf.drawImage(chart_reader, 100, y_position - 200, width=300, height=200)
