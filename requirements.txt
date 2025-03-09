@@ -1,16 +1,8 @@
-numpy==2.2.3
 cloudinary==1.42.2
 librosa==0.10.2.post1
 matplotlib==3.10.1
 mongoengine==0.29.1
-<<<<<<< HEAD
-<<<<<<< HEAD
-protobuf==6.30.0
-=======
 numpy==2.2.3
->>>>>>> 8e0fa6fa079ba1f1abef2aadad32131b344fb53b
-=======
->>>>>>> 082675dd9a07159da5b4747ca68883ba445c11e0
 reportlab==4.3.1
 scikit_learn==1.6.1
 soundfile==0.13.1
