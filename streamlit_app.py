@@ -16,7 +16,12 @@ from transformers import pipeline
 from sklearn.cluster import SpectralClustering
 import time
 import torch
-torch.classes.__path__ = []
+import google.generativeai as genai
+
+# Configure Gemini API
+genai.configure(api_key='AIzaSyC3vNkSnEJl-eFloSm9M4Bw0F_cJv2vusY')
+gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+
 # Initialize global variable properly
 combined_results = []
 
@@ -28,7 +33,6 @@ cloudinary.config(
     api_key="498768356194988",
     api_secret="MByqbQBBH0a3L8-T84MRYTj5BWA"
 )
-
 
 class VoiceSeparationTranscriber:
     def __init__(self, model_name="openai/whisper-small"):
@@ -43,14 +47,6 @@ class VoiceSeparationTranscriber:
         except Exception as e:
             print(f"Error loading ASR model: {e}. Using placeholder transcriptions.")
             self.transcriber = None
-        
-        # Load sentiment analysis model
-        try:
-            self.sentiment_model = pipeline("sentiment-analysis")
-            print("Successfully loaded sentiment analysis model")
-        except Exception as e:
-            print(f"Error loading sentiment model: {e}. Using placeholder sentiments.")
-            self.sentiment_model = None
         
     def extract_features(self, audio, sr):
         """Extract MFCC features for speaker identification."""
@@ -98,22 +94,37 @@ class VoiceSeparationTranscriber:
         
         return speaker_files
     
-    def get_sentiment(self, text):
-        """Get sentiment classification for a statement."""
-        if not self.sentiment_model or not text.strip():
-            return "NEUTRAL"  # Default sentiment
+    def get_sentiment_and_emotion(self, text):
+        if not text.strip():
+            return "NEUTRAL", "Neutral"  # Default sentiment and emotion
+        
         try:
-            sentiment = self.sentiment_model(text)
-            return sentiment[0]['label']
+            prompt = f"Analyze the sentiment (Positive, Negative, Neutral) and emotion (e.g., Happy, Sad, Angry) in the following text. Respond in the format 'Sentiment: <sentiment>, Emotion: <emotion>': {text}"
+            response = gemini_model.generate_content(prompt)
+            response_text = response.text.strip()
+            
+            # Parse the response
+            sentiment = response_text.split("Sentiment: ")[1].split(",")[0].strip()
+            emotion = response_text.split("Emotion: ")[1].strip()
+            
+            # Adjust sentiment based on emotion
+            if emotion.lower() in ["happy", "joyful", "excited"]:
+                sentiment = "POSITIVE"
+            elif emotion.lower() in ["sad", "angry", "frustrated"]:
+                sentiment = "NEGATIVE"
+            elif emotion.lower() in ["neutral", "calm", "indifferent"]:
+                sentiment = "NEUTRAL"
+            
+            return sentiment, emotion
         except Exception as e:
-            print(f"Error analyzing sentiment: {e}")
-            return "NEUTRAL"
+            print(f"Error analyzing sentiment and emotion with Gemini API: {e}")
+            return "NEUTRAL", "Neutral"
     
     def transcribe_segments(self, segments, sr, labels, timestamps):
-        """Transcribe each speaker's audio and analyze sentiment."""
-        print("Transcribing audio and analyzing sentiment...")
+        """Transcribe each speaker's audio and analyze sentiment and emotion."""
+        print("Transcribing audio and analyzing sentiment and emotion...")
         speaker_texts = {}
-        sentiment_data = []  # Store sentiment data for visualization
+        sentiment_data = []  # Store sentiment and emotion data for visualization
 
         for i, label in enumerate(np.unique(labels)):
             if label not in speaker_texts:
@@ -128,26 +139,27 @@ class VoiceSeparationTranscriber:
                 else:
                     text = f"Transcribed text for Speaker {label+1}, segment {i+1}"
 
-                # Get sentiment for this text
-                sentiment = self.get_sentiment(text)
+                # Get sentiment and emotion for this text using Gemini API
+                sentiment, emotion = self.get_sentiment_and_emotion(text)
                 
                 timestamp = timestamps[i]
                 formatted_text = f"[{timestamp:.2f}s] {text}"
                 speaker_texts[label].append(formatted_text)
                 
-                # Store sentiment data for visualization
+                # Store sentiment and emotion data for visualization
                 sentiment_data.append({
                     'speaker': label,
                     'timestamp': timestamp,
                     'text': text,
-                    'sentiment': sentiment
+                    'sentiment': sentiment,
+                    'emotion': emotion
                 })
                 
                 # Print to console
                 border_color = "#6c757d"
-                if(sentiment == "POSITIVE"):
+                if sentiment == "POSITIVE":
                     border_color = "#28a745"
-                elif(sentiment == "NEGATIVE"):
+                elif sentiment == "NEGATIVE":
                     border_color = "#dc3545"
                     
                 # Create the HTML block with dynamic border color
@@ -162,7 +174,7 @@ class VoiceSeparationTranscriber:
                     color: #4A90E2;
                     box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
                 ">
-                    <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment}
+                    <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment} | <strong>Emotion:</strong> {emotion}
                 </div>
                 """
 
@@ -221,9 +233,10 @@ class VoiceSeparationTranscriber:
             timestamp = item['timestamp']
             text = item['text']
             sentiment = item['sentiment']
+            emotion = item['emotion']
             
             formatted_text = f"[{timestamp:.2f}s] {text}"
-            result_tuple = (formatted_text, sentiment, timestamp)
+            result_tuple = (formatted_text, sentiment, timestamp, emotion)
             combined_results.append((speaker_name, result_tuple))
 
         # Saving the transcriptions
@@ -322,6 +335,7 @@ def convert_sentiment_data_for_ui(sentiment_data):
         ui_data.append({
             "sentence": entry['text'],
             "sentiment": mapped_sentiment,
+            "emotion": entry['emotion'],
             "response_time": random.randint(10, 30),  # Random response time
             "alerts": alert
         })
@@ -400,49 +414,6 @@ if audio_file:
         # Display Transcriptions
         st.write("Transcript Analysis:")
         
-        # Initialize the transcription HTML
-        # transcription_html = ""
-        
-        # # Loop through sentiment data and generate transcription blocks
-        # for entry in sentiment_data:
-        #     # Determine the border color based on sentiment
-        #     if entry['sentiment'] == "Positive":
-        #         border_color = "#28a745"  # Green for Positive
-        #     elif entry['sentiment'] == "Negative":
-        #         border_color = "#dc3545"  # Red for Negative
-        #     else:
-        #         border_color = "#6c757d"  # Gray for Neutral
-        
-        #     transcription_html += f"""
-        #     <div class="transcription" style="border-color: {border_color};">
-        #         <strong>Transcription:</strong> {entry['sentence']}
-        #         <br><strong>Sentiment:</strong> {entry['sentiment']}
-        #         <br><strong>Alerts:</strong> {entry['alerts']}
-        #         <br><strong>Response Time:</strong> {entry['response_time']} seconds
-        #     </div>
-        #     """
-        
-        # # Add the CSS for transcription styling
-        # st.markdown(
-        #     f"""
-        #     <style>
-        #         .transcription {{
-        #             font-family: 'Arial', sans-serif;
-        #             font-size: 18px;
-        #             color: #4A90E2;
-        #             padding: 10px;
-        #             border-radius: 8px;
-        #             border: 2px solid;
-        #             box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
-        #             margin-top: 10px;
-        #             margin-bottom: 10px;
-        #         }}
-        #     </style>
-        #     {transcription_html}
-        #     """,
-        #     unsafe_allow_html=True
-        # )
-        
         # Display the visualization
         st.image(result["visualization"], caption="Speaker Diarization with Sentiment")
         
@@ -490,6 +461,13 @@ if audio_file:
                 y_position -= 15
 
                 pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(100, y_position, "Emotion:")
+                y_position -= 15
+                pdf.setFont("Helvetica", 12)
+                pdf.drawString(100, y_position, entry['emotion'])
+                y_position -= 15
+
+                pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(100, y_position, "Response Time:")
                 y_position -= 15
                 pdf.setFont("Helvetica", 12)
@@ -503,7 +481,7 @@ if audio_file:
                 pdf.drawString(100, y_position, entry['alerts'])
                 y_position -= 30  # Add extra space between entries
 
-                # Add Sentiment Chart to PDF
+            # Add Sentiment Chart to PDF
             chart_path = generate_pie_chart(sentiment_percentages)
             chart_reader = ImageReader(chart_path)
             pdf.drawImage(chart_reader, 100, y_position - 200, width=300, height=200)
