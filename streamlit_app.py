@@ -5,9 +5,6 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
 import io
-from mongoengine import connect
-import cloudinary
-import cloudinary.uploader
 import os
 import librosa
 import numpy as np
@@ -16,18 +13,14 @@ from transformers import pipeline
 from sklearn.cluster import SpectralClustering
 import time
 import torch
+import google.generativeai as genai
+
 torch.classes.__path__ = []
 # Initialize global variable properly
 combined_results = []
 
-# Configure MongoDB
-connect(db="voiceAnalysisDB", host="localhost", port=27017)
-
-cloudinary.config(
-    cloud_name="da22oy8nw",
-    api_key="498768356194988",
-    api_secret="MByqbQBBH0a3L8-T84MRYTj5BWA"
-)
+# Configure Gemini API
+genai.configure(api_key="AIzaSyC3vNkSnEJl-eFloSm9M4Bw0F_cJv2vusY")
 
 
 class VoiceSeparationTranscriber:
@@ -60,6 +53,9 @@ class VoiceSeparationTranscriber:
             print(f"Error loading emotion model: {e}. Using placeholder emotions.")
             self.emotion_pipeline = None
         
+        # Initialize Gemini API
+        self.gemini_model = genai.GenerativeModel('gemini-pro')
+    
     def extract_features(self, audio, sr):
         """Extract MFCC features for speaker identification."""
         print("Extracting MFCC features...")
@@ -128,11 +124,25 @@ class VoiceSeparationTranscriber:
             print(f"Error analyzing emotion: {e}")
             return "Neutral"
     
+    def analyze_pitch(self, text):
+        """Analyze the pitch of a text using the Gemini API."""
+        try:
+            prompt = f"Classify the pitch of the following text as 'high', 'mid', or 'low':\n{text}"
+            response = self.gemini_model.generate_content(prompt)
+            pitch = response.text.strip().lower()
+            if pitch in ["high", "mid", "low"]:
+                return pitch
+            else:
+                return "mid"  # Default to mid if classification is unclear
+        except Exception as e:
+            print(f"Error analyzing pitch: {e}")
+            return "mid"  # Default to mid in case of errors
+    
     def transcribe_segments(self, segments, sr, labels, timestamps):
-        """Transcribe each speaker's audio and analyze sentiment and emotion."""
-        print("Transcribing audio and analyzing sentiment and emotion...")
+        """Transcribe each speaker's audio and analyze sentiment, emotion, and pitch."""
+        print("Transcribing audio and analyzing sentiment, emotion, and pitch...")
         speaker_texts = {}
-        sentiment_data = []  # Store sentiment and emotion data for visualization
+        sentiment_data = []  # Store sentiment, emotion, and pitch data for visualization
 
         for i, label in enumerate(np.unique(labels)):
             if label not in speaker_texts:
@@ -153,17 +163,21 @@ class VoiceSeparationTranscriber:
                 # Get emotion for this text
                 emotion = self.get_emotion(text)
                 
+                # Get pitch for this text
+                pitch = self.analyze_pitch(text)
+                
                 timestamp = timestamps[i]
                 formatted_text = f"[{timestamp:.2f}s] {text}"
                 speaker_texts[label].append(formatted_text)
                 
-                # Store sentiment and emotion data for visualization
+                # Store sentiment, emotion, and pitch data for visualization
                 sentiment_data.append({
                     'speaker': label,
                     'timestamp': timestamp,
                     'text': text,
                     'sentiment': sentiment,
-                    'emotion': emotion  # Add emotion field
+                    'emotion': emotion,
+                    'pitch': pitch  # Add pitch field
                 })
                 
                 # Print to console
@@ -185,7 +199,7 @@ class VoiceSeparationTranscriber:
                     color: #4A90E2;
                     box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
                 ">
-                    <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment} | <strong>Emotion:</strong> {emotion}
+                    <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment} | <strong>Emotion:</strong> {emotion} | <strong>Pitch:</strong> {pitch}
                 </div>
                 """
 
@@ -244,9 +258,11 @@ class VoiceSeparationTranscriber:
             timestamp = item['timestamp']
             text = item['text']
             sentiment = item['sentiment']
+            emotion = item['emotion']
+            pitch = item['pitch']
             
             formatted_text = f"[{timestamp:.2f}s] {text}"
-            result_tuple = (formatted_text, sentiment, timestamp)
+            result_tuple = (formatted_text, sentiment, emotion, pitch, timestamp)
             combined_results.append((speaker_name, result_tuple))
 
         # Saving the transcriptions
@@ -265,8 +281,8 @@ class VoiceSeparationTranscriber:
         }
     
     def visualize_diarization_with_sentiment(self, sentiment_data, n_speakers, output_dir):
-        """Create a visualization of speaker diarization with sentiment information."""
-        print("Generating speaker visualization with sentiment information...")
+        """Create a visualization of speaker diarization with sentiment and emotion information."""
+        print("Generating speaker visualization with sentiment and emotion information...")
         
         plt.figure(figsize=(15, 8))
         
@@ -277,65 +293,53 @@ class VoiceSeparationTranscriber:
             'NEGATIVE': 'red'
         }
         
-        def visualize_diarization_with_sentiment(self, sentiment_data, n_speakers, output_dir):
-            """Create a visualization of speaker diarization with sentiment and emotion information."""
-            print("Generating speaker visualization with sentiment and emotion information...")
+        # Plot speakers with sentiment coloring
+        for speaker in range(n_speakers):
+            speaker_segments = [item for item in sentiment_data if item['speaker'] == speaker]
             
-            plt.figure(figsize=(15, 8))
-            
-            # Define sentiment colors
-            sentiment_colors = {
-                'POSITIVE': 'green',
-                'NEUTRAL': 'blue',
-                'NEGATIVE': 'red'
-            }
-            
-            # Plot speakers with sentiment coloring
-            for speaker in range(n_speakers):
-                speaker_segments = [item for item in sentiment_data if item['speaker'] == speaker]
+            for segment in speaker_segments:
+                timestamp = segment['timestamp']
+                sentiment = segment['sentiment']
+                emotion = segment['emotion']
+                pitch = segment['pitch']
                 
-                for segment in speaker_segments:
-                    timestamp = segment['timestamp']
-                    sentiment = segment['sentiment']
-                    emotion = segment['emotion']
-                    
-                    # Get color based on sentiment (default to gray if sentiment not recognized)
-                    color = sentiment_colors.get(sentiment, 'gray')
-                    
-                    # Plot the point with sentiment color
-                    plt.scatter(timestamp, speaker, color=color, s=100, alpha=0.7)
-                    
-                    # Add text annotation (limit to first 20 chars to avoid overlap)
-                    short_text = f"{segment['text'][:20]}...\nEmotion: {emotion}"
-                    plt.annotate(short_text, (timestamp, speaker), 
-                                textcoords="offset points", 
-                                xytext=(0,10), 
-                                ha='center', 
-                                fontsize=8,
-                                rotation=45)
-            
-            # Create sentiment legend
-            sentiment_patches = [plt.Line2D([0], [0], marker='o', color='w', 
-                                markerfacecolor=color, markersize=10, label=sentiment)
-                            for sentiment, color in sentiment_colors.items()]
-            
-            plt.legend(handles=sentiment_patches, title="Sentiment", loc='upper right')
-            
-            # Set y-ticks to speaker labels
-            plt.yticks(range(n_speakers), [f'Speaker {i+1}' for i in range(n_speakers)])
-            
-            plt.xlabel('Time (seconds)')
-            plt.ylabel('Speaker')
-            plt.title('Speaker Diarization with Sentiment and Emotion Analysis')
-            plt.grid(True, linestyle='--', alpha=0.7)
-            
-            # Save figure
-            viz_file = os.path.join(output_dir, 'speaker_diarization_with_sentiment_emotion.png')
-            plt.tight_layout()
-            plt.savefig(viz_file, dpi=300)
-            plt.close()
-            
-            print(f"Visualization with sentiment and emotion saved: {viz_file}")
+                # Get color based on sentiment (default to gray if sentiment not recognized)
+                color = sentiment_colors.get(sentiment, 'gray')
+                
+                # Plot the point with sentiment color
+                plt.scatter(timestamp, speaker, color=color, s=100, alpha=0.7)
+                
+                # Add text annotation (limit to first 20 chars to avoid overlap)
+                short_text = f"{segment['text'][:20]}...\nEmotion: {emotion}\nPitch: {pitch}"
+                plt.annotate(short_text, (timestamp, speaker), 
+                             textcoords="offset points", 
+                             xytext=(0,10), 
+                             ha='center', 
+                             fontsize=8,
+                             rotation=45)
+        
+        # Create sentiment legend
+        sentiment_patches = [plt.Line2D([0], [0], marker='o', color='w', 
+                                     markerfacecolor=color, markersize=10, label=sentiment)
+                          for sentiment, color in sentiment_colors.items()]
+        
+        plt.legend(handles=sentiment_patches, title="Sentiment", loc='upper right')
+        
+        # Set y-ticks to speaker labels
+        plt.yticks(range(n_speakers), [f'Speaker {i+1}' for i in range(n_speakers)])
+        
+        plt.xlabel('Time (seconds)')
+        plt.ylabel('Speaker')
+        plt.title('Speaker Diarization with Sentiment, Emotion, and Pitch Analysis')
+        plt.grid(True, linestyle='--', alpha=0.7)
+        
+        # Save figure
+        viz_file = os.path.join(output_dir, 'speaker_diarization_with_sentiment_emotion_pitch.png')
+        plt.tight_layout()
+        plt.savefig(viz_file, dpi=300)
+        plt.close()
+        
+        print(f"Visualization with sentiment, emotion, and pitch saved: {viz_file}")
 
 
 # Helper function to convert sentiment data to UI format
@@ -359,6 +363,8 @@ def convert_sentiment_data_for_ui(sentiment_data):
         ui_data.append({
             "sentence": entry['text'],
             "sentiment": mapped_sentiment,
+            "emotion": entry['emotion'],
+            "pitch": entry['pitch'],
             "response_time": random.randint(10, 30),  # Random response time
             "alerts": alert
         })
@@ -396,7 +402,7 @@ def generate_pie_chart(sentiment_dict):
     return chart_path
 
 # Streamlit Interface
-st.title("Audio Sentiment Analysis")
+st.title("Audio Sentiment, Emotion, and Pitch Analysis")
 
 # File Upload
 audio_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "ogg"])
@@ -438,7 +444,7 @@ if audio_file:
         st.write("Transcript Analysis:")
         
         # Display the visualization
-        st.image(result["visualization"], caption="Speaker Diarization with Sentiment")
+        st.image(result["visualization"], caption="Speaker Diarization with Sentiment, Emotion, and Pitch")
         
         # Generate and Display Pie Chart
         chart_path = generate_pie_chart(sentiment_percentages)
@@ -481,6 +487,20 @@ if audio_file:
                 y_position -= 15
                 pdf.setFont("Helvetica", 12)
                 pdf.drawString(100, y_position, entry['sentiment'])
+                y_position -= 15
+
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(100, y_position, "Emotion:")
+                y_position -= 15
+                pdf.setFont("Helvetica", 12)
+                pdf.drawString(100, y_position, entry['emotion'])
+                y_position -= 15
+
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(100, y_position, "Pitch:")
+                y_position -= 15
+                pdf.setFont("Helvetica", 12)
+                pdf.drawString(100, y_position, entry['pitch'])
                 y_position -= 15
 
                 pdf.setFont("Helvetica-Bold", 12)
