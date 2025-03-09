@@ -2,7 +2,7 @@ streamlit==1.16.0
 matplotlib==3.7.1
 reportlab==4.0.0
 librosa==0.10.0
-soundfile==2.4.0
+soundfile==0.10.2
 transformers==4.30.0
 scikit-learn==1.2.2
 torch==2.0.0
