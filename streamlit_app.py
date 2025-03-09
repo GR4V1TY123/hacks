@@ -54,7 +54,7 @@ class VoiceSeparationTranscriber:
             self.emotion_pipeline = None
         
         # Initialize Gemini API
-        self.gemini_model = genai.GenerativeModel('gemini-pro')
+        self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
     
     def extract_features(self, audio, sr):
         """Extract MFCC features for speaker identification."""
