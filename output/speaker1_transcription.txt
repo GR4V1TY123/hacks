@@ -1,0 +1,5 @@
+[0.00s] .
+[3.00s]  Hello.
+[4.00s]  My name is Nitesh.
+[5.00s]  I
+[6.00s]  I am in APU.

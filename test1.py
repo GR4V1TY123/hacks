@@ -1,7 +1,6 @@
 import whisper
 import os
 from pydub import AudioSegment
-import google.generativeai as genai
 import time
 import threading as th
 import json
