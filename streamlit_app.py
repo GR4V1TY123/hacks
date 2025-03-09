@@ -51,6 +51,14 @@ class VoiceSeparationTranscriber:
         except Exception as e:
             print(f"Error loading sentiment model: {e}. Using placeholder sentiments.")
             self.sentiment_model = None
+            
+        # Load emotion analysis model
+        try:
+            self.emotion_pipeline = pipeline("text-classification", model="SamLowe/roberta-base-go_emotions")
+            print("Successfully loaded emotion analysis model")
+        except Exception as e:
+            print(f"Error loading emotion model: {e}. Using placeholder emotions.")
+            self.emotion_pipeline = None
         
     def extract_features(self, audio, sr):
         """Extract MFCC features for speaker identification."""
@@ -108,12 +116,23 @@ class VoiceSeparationTranscriber:
         except Exception as e:
             print(f"Error analyzing sentiment: {e}")
             return "NEUTRAL"
+        
+    def get_emotion(self, text):
+        """Get emotion classification for a statement."""
+        if not self.emotion_pipeline or not text.strip():
+            return "Neutral"  # Default emotion
+        try:
+            emotion_result = self.emotion_pipeline(text)
+            return emotion_result[0]['label']
+        except Exception as e:
+            print(f"Error analyzing emotion: {e}")
+            return "Neutral"
     
     def transcribe_segments(self, segments, sr, labels, timestamps):
-        """Transcribe each speaker's audio and analyze sentiment."""
-        print("Transcribing audio and analyzing sentiment...")
+        """Transcribe each speaker's audio and analyze sentiment and emotion."""
+        print("Transcribing audio and analyzing sentiment and emotion...")
         speaker_texts = {}
-        sentiment_data = []  # Store sentiment data for visualization
+        sentiment_data = []  # Store sentiment and emotion data for visualization
 
         for i, label in enumerate(np.unique(labels)):
             if label not in speaker_texts:
@@ -131,25 +150,29 @@ class VoiceSeparationTranscriber:
                 # Get sentiment for this text
                 sentiment = self.get_sentiment(text)
                 
+                # Get emotion for this text
+                emotion = self.get_emotion(text)
+                
                 timestamp = timestamps[i]
                 formatted_text = f"[{timestamp:.2f}s] {text}"
                 speaker_texts[label].append(formatted_text)
                 
-                # Store sentiment data for visualization
+                # Store sentiment and emotion data for visualization
                 sentiment_data.append({
                     'speaker': label,
                     'timestamp': timestamp,
                     'text': text,
-                    'sentiment': sentiment
+                    'sentiment': sentiment,
+                    'emotion': emotion  # Add emotion field
                 })
                 
                 # Print to console
                 border_color = "#6c757d"
-                if(sentiment == "POSITIVE"):
+                if sentiment == "POSITIVE":
                     border_color = "#28a745"
-                elif(sentiment == "NEGATIVE"):
+                elif sentiment == "NEGATIVE":
                     border_color = "#dc3545"
-                    
+                        
                 # Create the HTML block with dynamic border color
                 transcription_html = f"""
                 <div style="
@@ -162,7 +185,7 @@ class VoiceSeparationTranscriber:
                     color: #4A90E2;
                     box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
                 ">
-                    <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment}
+                    <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment} | <strong>Emotion:</strong> {emotion}
                 </div>
                 """
 
@@ -254,51 +277,65 @@ class VoiceSeparationTranscriber:
             'NEGATIVE': 'red'
         }
         
-        # Plot speakers with sentiment coloring
-        for speaker in range(n_speakers):
-            speaker_segments = [item for item in sentiment_data if item['speaker'] == speaker]
+        def visualize_diarization_with_sentiment(self, sentiment_data, n_speakers, output_dir):
+            """Create a visualization of speaker diarization with sentiment and emotion information."""
+            print("Generating speaker visualization with sentiment and emotion information...")
             
-            for segment in speaker_segments:
-                timestamp = segment['timestamp']
-                sentiment = segment['sentiment']
+            plt.figure(figsize=(15, 8))
+            
+            # Define sentiment colors
+            sentiment_colors = {
+                'POSITIVE': 'green',
+                'NEUTRAL': 'blue',
+                'NEGATIVE': 'red'
+            }
+            
+            # Plot speakers with sentiment coloring
+            for speaker in range(n_speakers):
+                speaker_segments = [item for item in sentiment_data if item['speaker'] == speaker]
                 
-                # Get color based on sentiment (default to gray if sentiment not recognized)
-                color = sentiment_colors.get(sentiment, 'gray')
-                
-                # Plot the point with sentiment color
-                plt.scatter(timestamp, speaker, color=color, s=100, alpha=0.7)
-                
-                # Add text annotation (limit to first 20 chars to avoid overlap)
-                short_text = segment['text'][:20] + ('...' if len(segment['text']) > 20 else '')
-                plt.annotate(short_text, (timestamp, speaker), 
-                             textcoords="offset points", 
-                             xytext=(0,10), 
-                             ha='center', 
-                             fontsize=8,
-                             rotation=45)
-        
-        # Create sentiment legend
-        sentiment_patches = [plt.Line2D([0], [0], marker='o', color='w', 
-                                     markerfacecolor=color, markersize=10, label=sentiment)
-                          for sentiment, color in sentiment_colors.items()]
-        
-        plt.legend(handles=sentiment_patches, title="Sentiment", loc='upper right')
-        
-        # Set y-ticks to speaker labels
-        plt.yticks(range(n_speakers), [f'Speaker {i+1}' for i in range(n_speakers)])
-        
-        plt.xlabel('Time (seconds)')
-        plt.ylabel('Speaker')
-        plt.title('Speaker Diarization with Sentiment Analysis')
-        plt.grid(True, linestyle='--', alpha=0.7)
-        
-        # Save figure
-        viz_file = os.path.join(output_dir, 'speaker_diarization_with_sentiment.png')
-        plt.tight_layout()
-        plt.savefig(viz_file, dpi=300)
-        plt.close()
-        
-        print(f"Visualization with sentiment saved: {viz_file}")
+                for segment in speaker_segments:
+                    timestamp = segment['timestamp']
+                    sentiment = segment['sentiment']
+                    emotion = segment['emotion']
+                    
+                    # Get color based on sentiment (default to gray if sentiment not recognized)
+                    color = sentiment_colors.get(sentiment, 'gray')
+                    
+                    # Plot the point with sentiment color
+                    plt.scatter(timestamp, speaker, color=color, s=100, alpha=0.7)
+                    
+                    # Add text annotation (limit to first 20 chars to avoid overlap)
+                    short_text = f"{segment['text'][:20]}...\nEmotion: {emotion}"
+                    plt.annotate(short_text, (timestamp, speaker), 
+                                textcoords="offset points", 
+                                xytext=(0,10), 
+                                ha='center', 
+                                fontsize=8,
+                                rotation=45)
+            
+            # Create sentiment legend
+            sentiment_patches = [plt.Line2D([0], [0], marker='o', color='w', 
+                                markerfacecolor=color, markersize=10, label=sentiment)
+                            for sentiment, color in sentiment_colors.items()]
+            
+            plt.legend(handles=sentiment_patches, title="Sentiment", loc='upper right')
+            
+            # Set y-ticks to speaker labels
+            plt.yticks(range(n_speakers), [f'Speaker {i+1}' for i in range(n_speakers)])
+            
+            plt.xlabel('Time (seconds)')
+            plt.ylabel('Speaker')
+            plt.title('Speaker Diarization with Sentiment and Emotion Analysis')
+            plt.grid(True, linestyle='--', alpha=0.7)
+            
+            # Save figure
+            viz_file = os.path.join(output_dir, 'speaker_diarization_with_sentiment_emotion.png')
+            plt.tight_layout()
+            plt.savefig(viz_file, dpi=300)
+            plt.close()
+            
+            print(f"Visualization with sentiment and emotion saved: {viz_file}")
 
 
 # Helper function to convert sentiment data to UI format
@@ -399,49 +436,6 @@ if audio_file:
         
         # Display Transcriptions
         st.write("Transcript Analysis:")
-        
-        # Initialize the transcription HTML
-        # transcription_html = ""
-        
-        # # Loop through sentiment data and generate transcription blocks
-        # for entry in sentiment_data:
-        #     # Determine the border color based on sentiment
-        #     if entry['sentiment'] == "Positive":
-        #         border_color = "#28a745"  # Green for Positive
-        #     elif entry['sentiment'] == "Negative":
-        #         border_color = "#dc3545"  # Red for Negative
-        #     else:
-        #         border_color = "#6c757d"  # Gray for Neutral
-        
-        #     transcription_html += f"""
-        #     <div class="transcription" style="border-color: {border_color};">
-        #         <strong>Transcription:</strong> {entry['sentence']}
-        #         <br><strong>Sentiment:</strong> {entry['sentiment']}
-        #         <br><strong>Alerts:</strong> {entry['alerts']}
-        #         <br><strong>Response Time:</strong> {entry['response_time']} seconds
-        #     </div>
-        #     """
-        
-        # # Add the CSS for transcription styling
-        # st.markdown(
-        #     f"""
-        #     <style>
-        #         .transcription {{
-        #             font-family: 'Arial', sans-serif;
-        #             font-size: 18px;
-        #             color: #4A90E2;
-        #             padding: 10px;
-        #             border-radius: 8px;
-        #             border: 2px solid;
-        #             box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
-        #             margin-top: 10px;
-        #             margin-bottom: 10px;
-        #         }}
-        #     </style>
-        #     {transcription_html}
-        #     """,
-        #     unsafe_allow_html=True
-        # )
         
         # Display the visualization
         st.image(result["visualization"], caption="Speaker Diarization with Sentiment")
