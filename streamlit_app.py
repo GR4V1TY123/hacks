@@ -14,7 +14,9 @@ import numpy as np
 import soundfile as sf
 from transformers import pipeline
 from sklearn.cluster import SpectralClustering
-
+import time
+import torch
+torch.classes.__path__ = []
 # Initialize global variable properly
 combined_results = []
 
@@ -142,7 +144,30 @@ class VoiceSeparationTranscriber:
                 })
                 
                 # Print to console
-                print(f"Speaker {label+1} at {timestamp:.2f}s: '{text}' | Sentiment: {sentiment}")
+                border_color = "#6c757d"
+                if(sentiment == "POSITIVE"):
+                    border_color = "#28a745"
+                elif(sentiment == "NEGATIVE"):
+                    border_color = "#dc3545"
+                    
+                # Create the HTML block with dynamic border color
+                transcription_html = f"""
+                <div style="
+                    border: 2px solid {border_color};
+                    border-radius: 8px;
+                    padding: 10px;
+                    margin: 10px 0;
+                    font-family: Arial, sans-serif;
+                    font-size: 18px;
+                    color: #4A90E2;
+                    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+                ">
+                    <strong>Speaker {label+1} at {timestamp:.2f}s:</strong> '{text}' | <strong>Sentiment:</strong> {sentiment}
+                </div>
+                """
+
+                # Display the HTML block using st.markdown
+                st.markdown(transcription_html, unsafe_allow_html=True)
 
             except Exception as e:
                 print(f"Error transcribing segment {i} for speaker {label}: {e}")
@@ -150,7 +175,8 @@ class VoiceSeparationTranscriber:
         
         return speaker_texts, sentiment_data
 
-    def process_audio(self, audio_path, output_dir="output", n_speakers=2):
+    @st.cache_data
+    def process_audio(_self, audio_path, output_dir="output", n_speakers=2):
         """Process an audio file to separate and transcribe speakers."""
         print(f"Processing audio file: {audio_path}")
         
@@ -173,21 +199,21 @@ class VoiceSeparationTranscriber:
             print(f"Error loading audio: {e}")
             return None
         
-        segments, timestamps, _ = self.segment_audio(audio, sr)
+        segments, timestamps, _ = _self.segment_audio(audio, sr)
         print(f"Audio segmented into {len(segments)} segments")
 
         if not segments:
             print("No complete segments found.")
             return None
         
-        features = np.array([np.mean(self.extract_features(seg, sr), axis=0) for seg in segments])
-        labels = self.cluster_speakers(features, n_speakers)
-        speaker_files = self.save_audio_by_speaker(segments, labels, sr, output_dir)
+        features = np.array([np.mean(_self.extract_features(seg, sr), axis=0) for seg in segments])
+        labels = _self.cluster_speakers(features, n_speakers)
+        speaker_files = _self.save_audio_by_speaker(segments, labels, sr, output_dir)
 
-        transcriptions, sentiment_data = self.transcribe_segments(segments, sr, labels, timestamps)
+        transcriptions, sentiment_data = _self.transcribe_segments(segments, sr, labels, timestamps)
         
         # Generate diarization visualization with sentiment information
-        self.visualize_diarization_with_sentiment(sentiment_data, n_speakers, output_dir)
+        _self.visualize_diarization_with_sentiment(sentiment_data, n_speakers, output_dir)
 
         # Format all the results
         for item in sentiment_data:
@@ -342,15 +368,14 @@ if audio_file:
     st.audio(audio_file)
     
     # Save uploaded file to disk temporarily
-    with open("temp_audio.mp3", "wb") as f:
-        f.write(audio_file.getbuffer())
-    
-    # Upload the audio file to Cloudinary
-    upload_result = cloudinary.uploader.upload("temp_audio.mp3", resource_type="video", folder="audios")
-    
-    # Get the URL of the uploaded audio file
-    audio_url = upload_result['secure_url']
-    st.write(f"Audio uploaded successfully! You can access the file at: [Click Here]({audio_url})")
+    temp_file_path = "temp_audio.wav"
+    try:
+        with open(temp_file_path, "wb") as f:
+            f.write(audio_file.getbuffer())
+        st.success("File uploaded and saved temporarily.")
+    except Exception as e:
+        st.error(f"Error saving temporary file: {e}")
+        st.stop()
     
     # Process the audio file
     output_directory = "output"
@@ -359,7 +384,7 @@ if audio_file:
     
     # Create transcriber and process audio
     transcriber = VoiceSeparationTranscriber(model_name=model_name)
-    result = transcriber.process_audio("temp_audio.mp3", output_directory, num_speakers)
+    result = transcriber.process_audio(temp_file_path, output_directory, num_speakers)
     
     if result:
         # Convert sentiment data to UI format
@@ -376,47 +401,47 @@ if audio_file:
         st.write("Transcript Analysis:")
         
         # Initialize the transcription HTML
-        transcription_html = ""
+        # transcription_html = ""
         
-        # Loop through sentiment data and generate transcription blocks
-        for entry in sentiment_data:
-            # Determine the border color based on sentiment
-            if entry['sentiment'] == "Positive":
-                border_color = "#28a745"  # Green for Positive
-            elif entry['sentiment'] == "Negative":
-                border_color = "#dc3545"  # Red for Negative
-            else:
-                border_color = "#6c757d"  # Gray for Neutral
+        # # Loop through sentiment data and generate transcription blocks
+        # for entry in sentiment_data:
+        #     # Determine the border color based on sentiment
+        #     if entry['sentiment'] == "Positive":
+        #         border_color = "#28a745"  # Green for Positive
+        #     elif entry['sentiment'] == "Negative":
+        #         border_color = "#dc3545"  # Red for Negative
+        #     else:
+        #         border_color = "#6c757d"  # Gray for Neutral
         
-            transcription_html += f"""
-            <div class="transcription" style="border-color: {border_color};">
-                <strong>Transcription:</strong> {entry['sentence']}
-                <br><strong>Sentiment:</strong> {entry['sentiment']}
-                <br><strong>Alerts:</strong> {entry['alerts']}
-                <br><strong>Response Time:</strong> {entry['response_time']} seconds
-            </div>
-            """
+        #     transcription_html += f"""
+        #     <div class="transcription" style="border-color: {border_color};">
+        #         <strong>Transcription:</strong> {entry['sentence']}
+        #         <br><strong>Sentiment:</strong> {entry['sentiment']}
+        #         <br><strong>Alerts:</strong> {entry['alerts']}
+        #         <br><strong>Response Time:</strong> {entry['response_time']} seconds
+        #     </div>
+        #     """
         
-        # Add the CSS for transcription styling
-        st.markdown(
-            f"""
-            <style>
-                .transcription {{
-                    font-family: 'Arial', sans-serif;
-                    font-size: 18px;
-                    color: #4A90E2;
-                    padding: 10px;
-                    border-radius: 8px;
-                    border: 2px solid;
-                    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
-                    margin-top: 10px;
-                    margin-bottom: 10px;
-                }}
-            </style>
-            {transcription_html}
-            """,
-            unsafe_allow_html=True
-        )
+        # # Add the CSS for transcription styling
+        # st.markdown(
+        #     f"""
+        #     <style>
+        #         .transcription {{
+        #             font-family: 'Arial', sans-serif;
+        #             font-size: 18px;
+        #             color: #4A90E2;
+        #             padding: 10px;
+        #             border-radius: 8px;
+        #             border: 2px solid;
+        #             box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+        #             margin-top: 10px;
+        #             margin-bottom: 10px;
+        #         }}
+        #     </style>
+        #     {transcription_html}
+        #     """,
+        #     unsafe_allow_html=True
+        # )
         
         # Display the visualization
         st.image(result["visualization"], caption="Speaker Diarization with Sentiment")
@@ -430,24 +455,25 @@ if audio_file:
             buffer = io.BytesIO()
             pdf = canvas.Canvas(buffer, pagesize=letter)
             pdf.setTitle("Audio Analysis Report")
-        
+
+            # Initial y-position for content
             y_position = 750
-        
+
             # Title
             pdf.setFont("Helvetica-Bold", 16)
             pdf.drawString(100, y_position, "Audio Analysis Report")
             y_position -= 30
-        
+
             # Content
             pdf.setFont("Helvetica", 12)
-        
+
             # Iterate through sentiment data and add to PDF
             for entry in sentiment_data:
                 # Check if we need to create a new page
                 if y_position < 100:
                     pdf.showPage()  # Start a new page
                     y_position = 750  # Reset y_position to the top of the new page
-        
+
                 # Make key bold and add content
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(100, y_position, "Transcription:")
@@ -455,42 +481,38 @@ if audio_file:
                 pdf.setFont("Helvetica", 12)  # Switch back to regular font
                 pdf.drawString(100, y_position, entry['sentence'])
                 y_position -= 15
-        
+
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(100, y_position, "Sentiment:")
                 y_position -= 15
                 pdf.setFont("Helvetica", 12)
                 pdf.drawString(100, y_position, entry['sentiment'])
                 y_position -= 15
-        
+
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(100, y_position, "Response Time:")
                 y_position -= 15
                 pdf.setFont("Helvetica", 12)
                 pdf.drawString(100, y_position, f"{entry['response_time']} seconds")
                 y_position -= 15
-        
+
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(100, y_position, "Alerts:")
                 y_position -= 15
                 pdf.setFont("Helvetica", 12)
                 pdf.drawString(100, y_position, entry['alerts'])
-                y_position -= 30
-        
-                # Ensure content fits within the page height
-                if y_position < 100:
-                    pdf.showPage()
-                    y_position = 750
-        
-            # Add Sentiment Chart to PDF
+                y_position -= 30  # Add extra space between entries
+
+                # Add Sentiment Chart to PDF
+            chart_path = generate_pie_chart(sentiment_percentages)
             chart_reader = ImageReader(chart_path)
             pdf.drawImage(chart_reader, 100, y_position - 200, width=300, height=200)
-        
+
             # Save PDF to buffer
             pdf.showPage()
             pdf.save()
             buffer.seek(0)
-        
+
             # Send the PDF to user
             st.download_button(
                 label="Download PDF Report",
@@ -502,21 +524,7 @@ if audio_file:
         st.error("Error processing the audio file. Please try a different file.")
         
     # Clean up temporary file
-    if os.path.exists("temp_audio.mp3"):
-        os.remove("temp_audio.mp3")
+    if os.path.exists(temp_file_path):
+        os.remove(temp_file_path)
 else:
     st.write("Please upload an audio file to proceed.")
-
-if __name__ == "__main__":
-    audio_file_path = "twowaychat.mp3"  # Update with your actual file
-    output_directory = "output"
-    num_speakers = 2
-    model_name = "openai/whisper-small"
-
-    transcriber = VoiceSeparationTranscriber(model_name=model_name)
-    result = transcriber.process_audio(audio_file_path, output_directory, num_speakers)
-
-    if result:
-        print("\n✅ Processing complete! Results saved in 'output/'")
-    else:
-        print("\n❌ Error processing the audio file.")
